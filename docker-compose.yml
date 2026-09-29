@@ -1,0 +1,19 @@
+services:
+  rlproject:
+    image: rlimage:latest
+    container_name: rlproject
+    command: /bin/bash
+    stdin_open: true   # -i
+    tty: true          # -t
+    environment:
+      - DISPLAY=host.docker.internal:0.0
+    volumes:
+      - D:/course/RL:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
