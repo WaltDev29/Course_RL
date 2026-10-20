@@ -28,8 +28,8 @@ def learn():
             y_ = model(state_mem[t].reshape([1, s_dim]))[0]
             logprob = tf.math.log(y_[action_mem[t]])
             loss -= logprob * return_mem[t]  # 음수를 취해 최대화 문제를 최소화 문제로 변환
-    grad = tape.gradient(loss, model.trainable_weights)
-    optimizer.apply_gradients(zip(grad, model.trainable_weights))
+        grad = tape.gradient(loss, model.trainable_weights)
+        optimizer.apply_gradients(zip(grad, model.trainable_weights))
 
 env=gym.make('CartPole-v1')
 s_dim=env.observation_space.shape[0]
