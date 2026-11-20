@@ -1,1 +1,39 @@
-*.pkl
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.md
+
+# Legacy Root model weights
+*.keras
+f5-4.pkl
+f5-9.pkl
+
+# Pancake RL: 임시 실행 로그 및 텐서보드
+pancake/proto/runs/
+pancake/proto/tb/
+pancake/scratch/
+pancake/proto/models/
+*.tfevents.*
+*.tmp
+
+# 임시 생성 미디어 파일
+pancake/proto/*.gif
+*.png
+!pancake/proto/models/**/*.png
+
+# 대용량 리플레이 버퍼 (용량이 수백MB~수GB이므로 제외)
+replay_buffer.pkl
+*replay_buffer*.pkl
+
+# 모델 관련
+

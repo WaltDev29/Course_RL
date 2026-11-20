@@ -1,0 +1,203 @@
+<mujoco model="pancake_proto">
+  <!-- 횡 시점(X-Z 평면) 2D 프로토타입: 모든 관절 축을 Y축으로 통일 (축 방향 -Y => 양의 각도가 X->Z 방향 회전) -->
+  <compiler angle="radian" autolimits="true"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast"/>
+
+  <default>
+    <joint damping="0.3" armature="0.01"/>
+    <geom contype="0" conaffinity="0" rgba="0.5 0.5 0.55 1"/>
+  </default>
+
+  <visual>
+    <global offwidth="960" offheight="720"/>
+  </visual>
+
+  <worldbody>
+    <light pos="0.5 -1.5 2.0" dir="0 0.5 -1" diffuse="0.9 0.9 0.9"/>
+    <!-- 횡 카메라: 프라이팬 이동 시 화면 밖 이탈 방지를 위해 중심 X를 0.62로 밀어 화면 왼쪽으로 배치하고 거리를 -2.35m로 확보 -->
+    <camera name="side" pos="0.62 -2.35 0.72" xyaxes="1 0 0 0 0 1"/>
+    <geom name="ground" type="plane" pos="0 0 0" size="2.5 1 0.1" contype="1" conaffinity="2" rgba="0.85 0.85 0.8 1"/>
+
+    <!-- 사람 상체 몸통 기둥: 성인 남성 흉곽 표준 두께(19cm)로 볼륨감 확대, 수평 가운데(-0.01), 팔 가림 방지 위해 Y 뒤쪽(0.05) 배치 -->
+    <geom name="torso" type="box" pos="-0.01 0.05 0.45" size="0.095 0.04 0.45" rgba="0.25 0.35 0.45 0.85"/>
+    <geom name="head" type="sphere" pos="-0.01 0.05 1.05" size="0.095" rgba="0.88 0.76 0.65 1"/>
+    
+    <!-- 머리에 시선/카메라 위치 표시 (동그란 눈 및 렌즈) -->
+    <geom name="eye_white" type="sphere" pos="0.055 -0.01 1.07" size="0.020" rgba="0.95 0.95 0.95 1"/>
+    <geom name="eye_pupil" type="sphere" pos="0.070 -0.01 1.07" size="0.011" rgba="0.1 0.15 0.2 1"/>
+    <geom name="eye_lens" type="sphere" pos="0.077 -0.01 1.072" size="0.004" rgba="0.9 0.95 1.0 1"/>
+
+    <!-- 어깨 (Shoulder): 네모 상자 수평 가운데(-0.01)에서 사람 체형에 맞게 살짝 앞인 (0.01, 0, 0.90)에 정렬 -->
+    <body name="link1" pos="0.01 0 0.90">
+      <joint name="shoulder" type="hinge" axis="0 -1 0" range="-2.2 0.5"/>
+      <geom name="shoulder_joint" type="sphere" pos="0 0 0" size="0.042" rgba="0.2 0.3 0.45 1"/>
+      <!-- 상완 (Upper arm, 성인 남성 근육 볼륨 6.8cm 직경 반영): 어깨에서 팔꿈치로 -->
+      <geom name="upper_arm" type="capsule" fromto="0 0 0 0.32 0 0" size="0.034" mass="1.8" rgba="0.28 0.38 0.52 1"/>
+      
+      <!-- 팔꿈치 (Elbow): 상완 끝 -->
+      <body name="link2" pos="0.32 0 0">
+        <joint name="elbow" type="hinge" axis="0 -1 0" range="0.0 2.6"/>
+        <geom name="elbow_joint" type="sphere" pos="0 0 0" size="0.034" rgba="0.2 0.3 0.45 1"/>
+        <!-- 전완 (Forearm, 성인 남성 평균 28cm): 팔꿈치에서 손목으로 -->
+        <geom name="forearm" type="capsule" fromto="0 0 0 0.28 0 0" size="0.022" mass="1.2" rgba="0.88 0.76 0.65 1"/>
+        
+        <!-- 손목 (Wrist): 전완 끝 -->
+        <body name="link3" pos="0.28 0 0">
+          <joint name="wrist" type="hinge" axis="0 -1 0" range="-1.8 1.8"/>
+          <site name="wrist_site" pos="0 0 0" size="0.01"/>
+          
+          <!-- 손목 끝 동그란 손 (Hand, 8cm) -->
+          <geom name="hand" type="sphere" pos="0.05 0 0" size="0.042" mass="0.3" rgba="0.88 0.76 0.65 1"/>
+          
+          <!-- 손에서부터 이어지는 프라이팬 손잡이 (Pan Handle: 아래쪽에 배치, 물리 충돌 없음: contype=0 conaffinity=0, 팬케이크 통과) -->
+          <geom name="pan_handle" type="capsule" fromto="0.05 0 -0.010 0.225 0 -0.005" size="0.011" mass="0.1"
+                contype="0" conaffinity="0" rgba="0.15 0.15 0.15 1"/>
+          
+          <!-- 슬림하면서도 끼지 않는 12mm 두께 프라이팬 바닥 (20cm 평평한 바닥, 상단 Z=0.000, 하단 Z=-0.012) -->
+          <geom name="pan_floor" type="box" pos="0.34 0 -0.0060" size="0.101 0.04 0.0060" mass="0.35"
+                contype="1" conaffinity="2" condim="6" friction="1.2 0.05 0.08"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.2 0.2 0.2 1"/>
+
+          <!-- 프라이팬 앞쪽 부드러운 곡면 림: 바닥에서 90도 수직 끝단까지 부드럽게 굽어지는 12mm 두께 세그먼트 체인 -->
+          <geom name="pan_rim_f1" type="box" pos="0.4502 0 -0.0039" size="0.0106 0.04 0.0060" euler="0 -0.2182 0" mass="0.015"
+                contype="1" conaffinity="2" condim="6" friction="0.9 0.01 0.005"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.25 0.25 0.25 1"/>
+          <geom name="pan_rim_f2" type="box" pos="0.4686 0 0.0047" size="0.0106 0.04 0.0060" euler="0 -0.6545 0" mass="0.015"
+                contype="1" conaffinity="2" condim="6" friction="0.9 0.01 0.005"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.25 0.25 0.25 1"/>
+          <geom name="pan_rim_f3" type="box" pos="0.4817 0 0.0203" size="0.0106 0.04 0.0060" euler="0 -1.0908 0" mass="0.015"
+                contype="1" conaffinity="2" condim="6" friction="0.9 0.01 0.005"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.25 0.25 0.25 1"/>
+          <geom name="pan_rim_f4" type="box" pos="0.4872 0 0.0358" size="0.0070 0.04 0.0060" euler="0 -1.4399 0" mass="0.015"
+                contype="1" conaffinity="2" condim="6" friction="0.9 0.01 0.005"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.25 0.25 0.25 1"/>
+          <geom name="pan_rim_f5" type="box" pos="0.4880 0 0.0450" size="0.0045 0.04 0.0060" euler="0 -1.5708 0" mass="0.015"
+                contype="1" conaffinity="2" condim="6" friction="0.9 0.01 0.005"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.25 0.25 0.25 1"/>
+
+          <!-- 프라이팬 뒤쪽 부드러운 곡면 림: 손잡이 쪽 대칭 90도 안쪽 굽힘 세그먼트 체인 -->
+          <geom name="pan_rim_b1" type="box" pos="0.2298 0 -0.0039" size="0.0106 0.04 0.0060" euler="0 0.2182 0" mass="0.015"
+                contype="1" conaffinity="2" condim="6" friction="0.9 0.01 0.005"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.25 0.25 0.25 1"/>
+          <geom name="pan_rim_b2" type="box" pos="0.2114 0 0.0047" size="0.0106 0.04 0.0060" euler="0 0.6545 0" mass="0.015"
+                contype="1" conaffinity="2" condim="6" friction="0.9 0.01 0.005"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.25 0.25 0.25 1"/>
+          <geom name="pan_rim_b3" type="box" pos="0.1983 0 0.0203" size="0.0106 0.04 0.0060" euler="0 1.0908 0" mass="0.015"
+                contype="1" conaffinity="2" condim="6" friction="0.9 0.01 0.005"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.25 0.25 0.25 1"/>
+          <geom name="pan_rim_b4" type="box" pos="0.1928 0 0.0358" size="0.0070 0.04 0.0060" euler="0 1.4399 0" mass="0.015"
+                contype="1" conaffinity="2" condim="6" friction="0.9 0.01 0.005"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.25 0.25 0.25 1"/>
+          <geom name="pan_rim_b5" type="box" pos="0.1920 0 0.0450" size="0.0045 0.04 0.0060" euler="0 1.5708 0" mass="0.015"
+                contype="1" conaffinity="2" condim="6" friction="0.9 0.01 0.005"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.25 0.25 0.25 1"/>
+
+          <site name="pan_center" pos="0.34 0 0" size="0.008" rgba="1 0 0 1"/>
+        </body>
+      </body>
+    </body>
+
+    <!-- 소프트바디 팬케이크: 7개 세그먼트 체인 (직경 13cm, 두께 1.0cm, 총 50g) -->
+    <!-- 위쪽 빨강(Red, Z=+2.5mm) / 아래쪽 파랑(Blue, Z=-2.5mm) 2단 구성으로 뒤집힘 시각화 극대화 -->
+    <body name="cake" pos="0 0 0">
+      <joint name="cake_x" type="slide" axis="1 0 0" damping="0" armature="0"/>
+      <joint name="cake_z" type="slide" axis="0 0 1" damping="0" armature="0"/>
+      <joint name="cake_rot" type="hinge" axis="0 -1 0" damping="0" armature="0"/>
+
+      <!-- 1) 중심 세그먼트 (길이 2.0cm, 8g): 아래 파랑 + 위 빨강 -->
+      <geom name="cake_geom" type="box" pos="0 0 -0.0025" size="0.010 0.04 0.0025" mass="0.004"
+            contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+            solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.15 0.45 0.95 1"/>
+      <geom name="cake_geom_top" type="box" pos="0 0 0.0025" size="0.010 0.04 0.0025" mass="0.004"
+            contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+            solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.95 0.22 0.2 1"/>
+      <site name="site_cake_center" pos="0 0 0" size="0.005" rgba="1 1 1 1"/>
+
+      <!-- 2) 우측 1번 세그먼트 (길이 1.8cm, 7g): 아래 파랑 + 위 빨강 -->
+      <body name="cake_r1" pos="0.010 0 0">
+        <joint name="j_r1" type="hinge" axis="0 -1 0" stiffness="0.0008" damping="0.00015" armature="0" range="-2.6 2.6"/>
+        <geom name="cake_geom_r1" type="box" pos="0.009 0 -0.0025" size="0.009 0.04 0.0025" mass="0.0035"
+              contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+              solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.15 0.45 0.95 1"/>
+        <geom name="cake_geom_r1_top" type="box" pos="0.009 0 0.0025" size="0.009 0.04 0.0025" mass="0.0035"
+              contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+              solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.95 0.22 0.2 1"/>
+
+        <!-- 3) 우측 2번 세그먼트 (길이 1.8cm, 7g): 아래 파랑 + 위 빨강 -->
+        <body name="cake_r2" pos="0.018 0 0">
+          <joint name="j_r2" type="hinge" axis="0 -1 0" stiffness="0.0008" damping="0.00015" armature="0" range="-2.6 2.6"/>
+          <geom name="cake_geom_r2" type="box" pos="0.009 0 -0.0025" size="0.009 0.04 0.0025" mass="0.0035"
+                contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.15 0.45 0.95 1"/>
+          <geom name="cake_geom_r2_top" type="box" pos="0.009 0 0.0025" size="0.009 0.04 0.0025" mass="0.0035"
+                contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.95 0.22 0.2 1"/>
+
+          <!-- 4) 우측 3번 세그먼트 (끝단, 길이 1.9cm, 7g): 아래 파랑 + 위 빨강 -->
+          <body name="cake_r3" pos="0.018 0 0">
+            <joint name="j_r3" type="hinge" axis="0 -1 0" stiffness="0.0008" damping="0.00015" armature="0" range="-2.6 2.6"/>
+            <geom name="cake_geom_r3" type="box" pos="0.0095 0 -0.0025" size="0.0095 0.04 0.0025" mass="0.0035"
+                  contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+                  solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.15 0.45 0.95 1"/>
+            <geom name="cake_geom_r3_top" type="box" pos="0.0095 0 0.0025" size="0.0095 0.04 0.0025" mass="0.0035"
+                  contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+                  solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.95 0.22 0.2 1"/>
+            <site name="site_cake_right" pos="0.019 0 0" size="0.005" rgba="0 1 0 1"/>
+          </body>
+        </body>
+      </body>
+
+      <!-- 5) 좌측 1번 세그먼트 (길이 1.8cm, 7g): 아래 파랑 + 위 빨강 -->
+      <body name="cake_l1" pos="-0.010 0 0">
+        <joint name="j_l1" type="hinge" axis="0 1 0" stiffness="0.0008" damping="0.00015" armature="0" range="-2.6 2.6"/>
+        <geom name="cake_geom_l1" type="box" pos="-0.009 0 -0.0025" size="0.009 0.04 0.0025" mass="0.0035"
+              contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+              solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.15 0.45 0.95 1"/>
+        <geom name="cake_geom_l1_top" type="box" pos="-0.009 0 0.0025" size="0.009 0.04 0.0025" mass="0.0035"
+              contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+              solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.95 0.22 0.2 1"/>
+
+        <!-- 6) 좌측 2번 세그먼트 (길이 1.8cm, 7g): 아래 파랑 + 위 빨강 -->
+        <body name="cake_l2" pos="-0.018 0 0">
+          <joint name="j_l2" type="hinge" axis="0 1 0" stiffness="0.0008" damping="0.00015" armature="0" range="-2.6 2.6"/>
+          <geom name="cake_geom_l2" type="box" pos="-0.009 0 -0.0025" size="0.009 0.04 0.0025" mass="0.0035"
+                contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.15 0.45 0.95 1"/>
+          <geom name="cake_geom_l2_top" type="box" pos="-0.009 0 0.0025" size="0.009 0.04 0.0025" mass="0.0035"
+                contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+                solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.95 0.22 0.2 1"/>
+
+          <!-- 7) 좌측 3번 세그먼트 (끝단, 길이 1.9cm, 7g): 아래 파랑 + 위 빨강 -->
+          <body name="cake_l3" pos="-0.018 0 0">
+            <joint name="j_l3" type="hinge" axis="0 1 0" stiffness="0.0008" damping="0.00015" armature="0" range="-2.6 2.6"/>
+            <geom name="cake_geom_l3" type="box" pos="-0.0095 0 -0.0025" size="0.0095 0.04 0.0025" mass="0.0035"
+                  contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+                  solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.15 0.45 0.95 1"/>
+            <geom name="cake_geom_l3_top" type="box" pos="-0.0095 0 0.0025" size="0.0095 0.04 0.0025" mass="0.0035"
+                  contype="2" conaffinity="3" condim="3" friction="1.0 0.01 0.01"
+                  solimp="0.9 0.95 0.001 0.5 2" solref="0.004 1" rgba="0.95 0.22 0.2 1"/>
+            <site name="site_cake_left" pos="-0.019 0 0" size="0.005" rgba="0 0 1 1"/>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <contact>
+    <!-- 인접 1칸 건너 세그먼트는 회전 꺾임 유연성을 위해 충돌 제외 (원거리 세그먼트끼리는 충돌하여 포개짐) -->
+    <exclude body1="cake" body2="cake_r2"/>
+    <exclude body1="cake_r1" body2="cake_r3"/>
+    <exclude body1="cake" body2="cake_l2"/>
+    <exclude body1="cake_l1" body2="cake_l3"/>
+
+    <!-- 프라이팬 바닥과 케이크 중심 접촉면에만 미세 점성(0.015N, 3% 수준) 및 롤링 저항 부여 (정방향/뒤집힘 양방향 모두 지원) -->
+    <pair geom1="pan_floor" geom2="cake_geom" condim="6" friction="1.2 0.05 0.08" adhesion="0.015" solref="0.004 1"/>
+    <pair geom1="pan_floor" geom2="cake_geom_top" condim="6" friction="1.2 0.05 0.08" adhesion="0.015" solref="0.004 1"/>
+  </contact>
+
+  <actuator>
+    <position name="a_shoulder" joint="shoulder" kp="500" kv="35" forcerange="-120 120" ctrlrange="-2.2 0.5"/>
+    <position name="a_elbow" joint="elbow" kp="450" kv="30" forcerange="-100 100" ctrlrange="0.0 2.6"/>
+    <position name="a_wrist" joint="wrist" kp="250" kv="18" forcerange="-60 60" ctrlrange="-1.8 1.8"/>
+  </actuator>
+</mujoco>
