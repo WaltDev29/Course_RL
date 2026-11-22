@@ -1,0 +1,189 @@
+<mujoco model="pancake_flip_3d">
+  <compiler angle="degree" coordinate="local" inertiafromgeom="true"/>
+  <option timestep="0.002" gravity="0 0 -9.81" iterations="50" solver="Newton" cone="elliptic"/>
+
+  <visual>
+    <headlight ambient="0.4 0.4 0.4" diffuse="0.8 0.8 0.8" specular="0.1 0.1 0.1"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+    <material name="mat_floor" rgba="0.95 0.95 0.96 1" specular="0.2" shininess="0.2" reflectance="0.05"/>
+    
+    <!-- 반투명 몸체 재질 (Alpha 0.35) -->
+    <material name="mat_torso" rgba="0.25 0.45 0.70 0.35" specular="0.4" shininess="0.4"/>
+    <material name="mat_arm" rgba="0.85 0.68 0.58 1" specular="0.2" shininess="0.2"/>
+    <material name="mat_pan" rgba="0.12 0.12 0.14 1" specular="0.4" shininess="0.5"/>
+    <material name="mat_handle" rgba="0.08 0.08 0.08 1" specular="0.2" shininess="0.2"/>
+    <material name="mat_cake_top" rgba="0.88 0.22 0.20 1" specular="0.2" shininess="0.2"/>
+    <material name="mat_cake_bottom" rgba="0.20 0.45 0.88 1" specular="0.2" shininess="0.2"/>
+
+    <!-- 포토리얼리스틱 3D 프라이팬 메쉬 -->
+    <mesh name="mesh_pan" file="frying_pan.obj"/>
+  </asset>
+
+  <default>
+    <joint limited="true" damping="0.1" armature="0.01"/>
+    <geom condim="4" friction="0.8 0.05 0.01"/>
+    <position kp="150" kv="12" forcerange="-80 80"/>
+  </default>
+
+  <worldbody>
+    <light directional="true" pos="-1 2 4" dir="0.5 -1 -2" diffuse="0.9 0.9 0.9" specular="0.3 0.3 0.3"/>
+    <!-- 흰색 바닥 -->
+    <geom name="floor" type="plane" size="3 3 0.1" material="mat_floor"/>
+
+    <!-- [3인칭 쿼터뷰 카메라] 뒤(-X) 좌측(+Y) 높은 곳에서 프라이팬 중심을 조망 -->
+    <camera name="quarter_view" pos="-1.15 1.25 1.35" xyaxes="-0.581 -0.814 0.0  0.297 -0.212 0.931"/>
+    <camera name="side_view" pos="0.55 1.60 0.85" xyaxes="-1 0 0  0 0 1"/>
+    <camera name="front_view" pos="1.60 -0.15 0.95" xyaxes="0 1 0  0 0 1"/>
+
+    <!-- 조리자 (Human Chef) 바디 -->
+    <body name="human" pos="0 0 0">
+      <!-- 몸통 (Torso): X=[-0.095, 0.095], Y=[-0.18, 0.18], Z=[0, 0.90] 바닥 밀착 -->
+      <geom name="torso" type="box" pos="0 0 0.45" size="0.095 0.18 0.45" material="mat_torso"/>
+      <!-- 머리 (Head): 몸체 정중앙 X=0, Y=0 직상방, 높이 Z=1.05 유지 -->
+      <geom name="head" type="sphere" size="0.095" pos="0 0 1.05" material="mat_arm"/>
+      <!-- 앞(+X)을 바라보는 시선 표시 -->
+      <geom name="eye_white" type="sphere" size="0.020" pos="0.082 0 1.07" rgba="0.95 0.95 0.95 1"/>
+      <geom name="eye_pupil" type="sphere" size="0.011" pos="0.093 0 1.07" rgba="0.1 0.15 0.2 1"/>
+      <geom name="eye_lens" type="sphere" size="0.004" pos="0.098 0 1.072" rgba="0.9 0.95 1.0 1"/>
+
+      <!-- [팔 체인]
+           - 어깨 윗면(Z + 0.042)이 몸체 윗면(Z=0.90)과 정확히 일치: Z = 0.858m
+           - 몸체 바깥쪽(Y = +0.18 + 0.04 = +0.22m)에 배치하여 몸체 관통 방지 -->
+      <body name="shoulder_mount" pos="0.0 0.22 0.858">
+        <!-- 1. 어깨 수평 회전 (Yaw) -->
+        <joint name="joint_sh_yaw" type="hinge" axis="0 0 1" range="-45 60"/>
+        <geom name="geom_sh_base" type="sphere" size="0.042" material="mat_torso"/>
+
+        <body name="shoulder_pitch_link" pos="0 0 0">
+          <inertial pos="0 0 0" mass="0.2" diaginertia="0.0005 0.0005 0.0005"/>
+          <!-- 2. 어깨 상하 굴곡 (Pitch) -->
+          <joint name="joint_sh_pitch" type="hinge" axis="0 1 0" range="-80 45"/>
+
+          <body name="shoulder_roll_link" pos="0 0 0">
+            <!-- 3. 상완 축 회전 (Roll) -->
+            <joint name="joint_sh_roll" type="hinge" axis="1 0 0" range="-60 60"/>
+            <geom name="geom_sh_joint" type="sphere" size="0.042" material="mat_arm"/>
+            <!-- 상완 (Upper Arm: 길이 32cm, 직경 6.8cm - 프로토타입과 동일) -->
+            <geom name="upper_arm" type="capsule" fromto="0 0 0  0.226 0 -0.226" size="0.034" material="mat_arm"/>
+
+            <!-- 팔꿈치 (Elbow, 2 DoF): 상완 끝 -->
+            <body name="elbow_pitch_link" pos="0.226 0 -0.226">
+              <inertial pos="0 0 0" mass="0.15" diaginertia="0.0003 0.0003 0.0003"/>
+              <!-- 4. 팔꿈치 굴곡 (Pitch) -->
+              <joint name="joint_el_pitch" type="hinge" axis="0 1 0" range="-10 130"/>
+              <geom name="geom_el_base" type="sphere" size="0.034" material="mat_arm"/>
+
+              <body name="elbow_yaw_link" pos="0 0 0">
+                <!-- 5. 팔꿈치 벌림/방향 (Yaw) -->
+                <joint name="joint_el_yaw" type="hinge" axis="0 0 1" range="-35 35"/>
+                <!-- 전완 (Forearm: 길이 28cm, 직경 4.4~5.8cm - 프로토타입과 동일) -->
+                <geom name="forearm" type="capsule" fromto="0 0 0  0.270 0 0.075" size="0.026" material="mat_arm"/>
+
+                <!-- 손목 (Wrist, 3 DoF): 전완 끝 -->
+                <body name="wrist_roll_link" pos="0.270 0 0.075">
+                  <inertial pos="0 0 0" mass="0.1" diaginertia="0.0002 0.0002 0.0002"/>
+                  <!-- 6. 전완/손목 회전 (Roll) -->
+                  <joint name="joint_wr_roll" type="hinge" axis="1 0 0" range="-80 80"/>
+                  <geom name="geom_wr_base" type="sphere" size="0.030" material="mat_arm"/>
+
+                  <body name="wrist_pitch_link" pos="0 0 0">
+                    <inertial pos="0 0 0" mass="0.08" diaginertia="0.0001 0.0001 0.0001"/>
+                    <!-- 7. 손목 상하 (Pitch) -->
+                    <joint name="joint_wr_pitch" type="hinge" axis="0 1 0" range="-45 45"/>
+
+                    <body name="wrist_yaw_link" pos="0 0 0">
+                      <!-- 8. 손목 좌우 (Yaw) -->
+                      <joint name="joint_wr_yaw" type="hinge" axis="0 0 1" range="-35 35"/>
+                      <!-- 손목 끝 동그란 손 (Hand, 8cm) -->
+                      <geom name="hand" type="sphere" size="0.042" pos="0.05 0 0" material="mat_arm"/>
+                      <site name="wrist_site" pos="0 0 0" size="0.01" rgba="0 1 0 0.5"/>
+
+                      <!-- [프라이팬 (Pan)] 포토리얼리스틱 3D 메쉬 및 틈새 없는 부드러운 곡면 림 (손목~팬 중심 0.34m) -->
+                      <body name="pan_head" pos="0.34 0 0">
+                        <!-- 사실적인 주방 프라이팬 3D 메쉬 (팬 바디 + 곡면 림 + 손잡이 일체형) -->
+                        <geom name="pan_mesh" type="mesh" mesh="mesh_pan" material="mat_pan" contype="0" conaffinity="0"/>
+                        <!-- 팬케이크 접촉용 바닥 충돌체: 테프론 저마찰 원판 (반경 0.105m, 상단 z=0.012) -->
+                        <geom name="pan_floor" type="cylinder" size="0.105 0.006" pos="0 0 0.006" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <site name="pan_center" pos="0 0 0.012" size="0.008" rgba="1 0 0 1"/>
+
+                        <!-- 2단 외향 경사 림(Flared Ramp Rim): 하단 램프(l) + 상단 림(h) 구조로 역경사 끼임 원천 차단 -->
+                        <geom name="rim_l01" type="capsule" fromto="0.1100 0.0000 0.0180  0.1046 0.0340 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l02" type="capsule" fromto="0.1046 0.0340 0.0180  0.0890 0.0647 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l03" type="capsule" fromto="0.0890 0.0647 0.0180  0.0647 0.0890 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l04" type="capsule" fromto="0.0647 0.0890 0.0180  0.0340 0.1046 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l05" type="capsule" fromto="0.0340 0.1046 0.0180  0.0000 0.1100 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l06" type="capsule" fromto="0.0000 0.1100 0.0180  -0.0340 0.1046 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l07" type="capsule" fromto="-0.0340 0.1046 0.0180  -0.0647 0.0890 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l08" type="capsule" fromto="-0.0647 0.0890 0.0180  -0.0890 0.0647 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l09" type="capsule" fromto="-0.0890 0.0647 0.0180  -0.1046 0.0340 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l10" type="capsule" fromto="-0.1046 0.0340 0.0180  -0.1100 0.0000 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l11" type="capsule" fromto="-0.1100 0.0000 0.0180  -0.1046 -0.0340 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l12" type="capsule" fromto="-0.1046 -0.0340 0.0180  -0.0890 -0.0647 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l13" type="capsule" fromto="-0.0890 -0.0647 0.0180  -0.0647 -0.0890 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l14" type="capsule" fromto="-0.0647 -0.0890 0.0180  -0.0340 -0.1046 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l15" type="capsule" fromto="-0.0340 -0.1046 0.0180  -0.0000 -0.1100 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l16" type="capsule" fromto="-0.0000 -0.1100 0.0180  0.0340 -0.1046 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l17" type="capsule" fromto="0.0340 -0.1046 0.0180  0.0647 -0.0890 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l18" type="capsule" fromto="0.0647 -0.0890 0.0180  0.0890 -0.0647 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l19" type="capsule" fromto="0.0890 -0.0647 0.0180  0.1046 -0.0340 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_l20" type="capsule" fromto="0.1046 -0.0340 0.0180  0.1100 -0.0000 0.0180" size="0.0090" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h01" type="capsule" fromto="0.1260 0.0000 0.0300  0.1198 0.0389 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h02" type="capsule" fromto="0.1198 0.0389 0.0300  0.1019 0.0741 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h03" type="capsule" fromto="0.1019 0.0741 0.0300  0.0741 0.1019 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h04" type="capsule" fromto="0.0741 0.1019 0.0300  0.0389 0.1198 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h05" type="capsule" fromto="0.0389 0.1198 0.0300  0.0000 0.1260 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h06" type="capsule" fromto="0.0000 0.1260 0.0300  -0.0389 0.1198 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h07" type="capsule" fromto="-0.0389 0.1198 0.0300  -0.0741 0.1019 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h08" type="capsule" fromto="-0.0741 0.1019 0.0300  -0.1019 0.0741 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h09" type="capsule" fromto="-0.1019 0.0741 0.0300  -0.1198 0.0389 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h10" type="capsule" fromto="-0.1198 0.0389 0.0300  -0.1260 0.0000 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h11" type="capsule" fromto="-0.1260 0.0000 0.0300  -0.1198 -0.0389 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h12" type="capsule" fromto="-0.1198 -0.0389 0.0300  -0.1019 -0.0741 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h13" type="capsule" fromto="-0.1019 -0.0741 0.0300  -0.0741 -0.1019 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h14" type="capsule" fromto="-0.0741 -0.1019 0.0300  -0.0389 -0.1198 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h15" type="capsule" fromto="-0.0389 -0.1198 0.0300  -0.0000 -0.1260 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h16" type="capsule" fromto="-0.0000 -0.1260 0.0300  0.0389 -0.1198 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h17" type="capsule" fromto="0.0389 -0.1198 0.0300  0.0741 -0.1019 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h18" type="capsule" fromto="0.0741 -0.1019 0.0300  0.1019 -0.0741 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h19" type="capsule" fromto="0.1019 -0.0741 0.0300  0.1198 -0.0389 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                        <geom name="rim_h20" type="capsule" fromto="0.1198 -0.0389 0.0300  0.1260 -0.0000 0.0300" size="0.0110" rgba="0 0 0 0" contype="1" conaffinity="2" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+
+    <!-- [3D 팬케이크] 프로토타입 원본과 100% 동일: 직경 13cm (반경 0.065m), 두께 1.0cm, 50g -->
+    <body name="cake" pos="0.84 0.22 0.73">
+      <freejoint name="cake_joint"/>
+      <!-- 상단 Red (Z > 0, 5mm) -->
+      <geom name="cake_top" type="cylinder" size="0.065 0.0025" pos="0 0 0.0025" material="mat_cake_top" mass="0.025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      <!-- 하단 Blue (Z < 0, 5mm) -->
+      <geom name="cake_bottom" type="cylinder" size="0.065 0.0025" pos="0 0 -0.0025" material="mat_cake_bottom" mass="0.025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      <!-- 법선/중심 추적용 사이트 -->
+      <site name="cake_center" pos="0 0 0" size="0.008" rgba="1 1 0 0.7"/>
+      <site name="cake_top_site" pos="0 0 0.005" size="0.006" rgba="1 0 0 0.9"/>
+    </body>
+  </worldbody>
+
+  <!-- 8개 관절 모터 액추에이터 (Position Servo: 고속 응답 및 스냅 토크) -->
+  <actuator>
+    <position name="act_sh_yaw" joint="joint_sh_yaw" kp="350" kv="25" forcerange="-120 120"/>
+    <position name="act_sh_pitch" joint="joint_sh_pitch" kp="450" kv="30" forcerange="-140 140"/>
+    <position name="act_sh_roll" joint="joint_sh_roll" kp="350" kv="25" forcerange="-120 120"/>
+    <position name="act_el_pitch" joint="joint_el_pitch" kp="400" kv="25" forcerange="-100 100"/>
+    <position name="act_el_yaw" joint="joint_el_yaw" kp="250" kv="18" forcerange="-80 80"/>
+    <position name="act_wr_roll" joint="joint_wr_roll" kp="200" kv="15" forcerange="-60 60"/>
+    <position name="act_wr_pitch" joint="joint_wr_pitch" kp="250" kv="18" forcerange="-60 60"/>
+    <position name="act_wr_yaw" joint="joint_wr_yaw" kp="180" kv="12" forcerange="-50 50"/>
+  </actuator>
+</mujoco>

@@ -23,6 +23,8 @@ pancake/proto/runs/
 pancake/proto/tb/
 pancake/scratch/
 pancake/proto/models/
+pancake/env_3d/runs/
+pancake/env_3d/models/
 *.tfevents.*
 *.tmp
 
