@@ -21,6 +21,24 @@
 
     <!-- 포토리얼리스틱 3D 프라이팬 메쉬 -->
     <mesh name="mesh_pan" file="frying_pan.obj"/>
+    <mesh name="mesh_cake_3x3_c_top" file="cake_3x3_c_top.obj"/>
+    <mesh name="mesh_cake_3x3_c_bot" file="cake_3x3_c_bot.obj"/>
+    <mesh name="mesh_cake_3x3_f_top" file="cake_3x3_f_top.obj"/>
+    <mesh name="mesh_cake_3x3_f_bot" file="cake_3x3_f_bot.obj"/>
+    <mesh name="mesh_cake_3x3_b_top" file="cake_3x3_b_top.obj"/>
+    <mesh name="mesh_cake_3x3_b_bot" file="cake_3x3_b_bot.obj"/>
+    <mesh name="mesh_cake_3x3_l_top" file="cake_3x3_l_top.obj"/>
+    <mesh name="mesh_cake_3x3_l_bot" file="cake_3x3_l_bot.obj"/>
+    <mesh name="mesh_cake_3x3_r_top" file="cake_3x3_r_top.obj"/>
+    <mesh name="mesh_cake_3x3_r_bot" file="cake_3x3_r_bot.obj"/>
+    <mesh name="mesh_cake_3x3_fl_top" file="cake_3x3_fl_top.obj"/>
+    <mesh name="mesh_cake_3x3_fl_bot" file="cake_3x3_fl_bot.obj"/>
+    <mesh name="mesh_cake_3x3_bl_top" file="cake_3x3_bl_top.obj"/>
+    <mesh name="mesh_cake_3x3_bl_bot" file="cake_3x3_bl_bot.obj"/>
+    <mesh name="mesh_cake_3x3_br_top" file="cake_3x3_br_top.obj"/>
+    <mesh name="mesh_cake_3x3_br_bot" file="cake_3x3_br_bot.obj"/>
+    <mesh name="mesh_cake_3x3_fr_top" file="cake_3x3_fr_top.obj"/>
+    <mesh name="mesh_cake_3x3_fr_bot" file="cake_3x3_fr_bot.obj"/>
   </asset>
 
   <default>
@@ -163,15 +181,71 @@
     </body>
 
     <!-- [3D 팬케이크] 프로토타입 원본과 100% 동일: 직경 13cm (반경 0.065m), 두께 1.0cm, 50g -->
+    <!-- [3D 소프트바디 팬케이크] 3x3 바둑판 격자 (9개 셀, 직경 13cm, 두께 1cm, 총 50g) -->
     <body name="cake" pos="0.84 0.22 0.73">
       <freejoint name="cake_joint"/>
-      <!-- 상단 Red (Z > 0, 5mm) -->
-      <geom name="cake_top" type="cylinder" size="0.065 0.0025" pos="0 0 0.0025" material="mat_cake_top" mass="0.025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
-      <!-- 하단 Blue (Z < 0, 5mm) -->
-      <geom name="cake_bottom" type="cylinder" size="0.065 0.0025" pos="0 0 -0.0025" material="mat_cake_bottom" mass="0.025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
-      <!-- 법선/중심 추적용 사이트 -->
-      <site name="cake_center" pos="0 0 0" size="0.008" rgba="1 1 0 0.7"/>
-      <site name="cake_top_site" pos="0 0 0.005" size="0.006" rgba="1 0 0 0.9"/>
+      <!-- 1) 중심 사각 셀 (c, 4.8cm x 4.8cm, 10g) -->
+      <geom name="cake_geom_c_top" type="mesh" mesh="mesh_cake_3x3_c_top" material="mat_cake_top" mass="0.005" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      <geom name="cake_geom_c_bot" type="mesh" mesh="mesh_cake_3x3_c_bot" material="mat_cake_bottom" mass="0.005" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      <site name="cake_center" pos="0 0 0" size="0.003" rgba="1 1 0 0"/>
+      <site name="cake_top_site" pos="0 0 0.005" size="0.003" rgba="1 0 0 0"/>
+
+      <!-- 바둑판 셀 (f): pos=(0.0552, 0.0000) -->
+      <body name="cake_f" pos="0.0552 0.0000 0">
+        <joint name="j_f_pitch" type="hinge" pos="-0.0312 0.0000 0" axis="0 1 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <joint name="j_f_roll" type="hinge" pos="-0.0312 0.0000 0" axis="1 0 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <geom name="cake_f_top" type="mesh" mesh="mesh_cake_3x3_f_top" material="mat_cake_top" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+        <geom name="cake_f_bot" type="mesh" mesh="mesh_cake_3x3_f_bot" material="mat_cake_bottom" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      </body>
+      <!-- 바둑판 셀 (b): pos=(-0.0552, 0.0000) -->
+      <body name="cake_b" pos="-0.0552 0.0000 0">
+        <joint name="j_b_pitch" type="hinge" pos="0.0312 0.0000 0" axis="0 1 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <joint name="j_b_roll" type="hinge" pos="0.0312 0.0000 0" axis="1 0 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <geom name="cake_b_top" type="mesh" mesh="mesh_cake_3x3_b_top" material="mat_cake_top" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+        <geom name="cake_b_bot" type="mesh" mesh="mesh_cake_3x3_b_bot" material="mat_cake_bottom" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      </body>
+      <!-- 바둑판 셀 (l): pos=(0.0000, 0.0552) -->
+      <body name="cake_l" pos="0.0000 0.0552 0">
+        <joint name="j_l_pitch" type="hinge" pos="0.0000 -0.0312 0" axis="0 1 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <joint name="j_l_roll" type="hinge" pos="0.0000 -0.0312 0" axis="1 0 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <geom name="cake_l_top" type="mesh" mesh="mesh_cake_3x3_l_top" material="mat_cake_top" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+        <geom name="cake_l_bot" type="mesh" mesh="mesh_cake_3x3_l_bot" material="mat_cake_bottom" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      </body>
+      <!-- 바둑판 셀 (r): pos=(0.0000, -0.0552) -->
+      <body name="cake_r" pos="0.0000 -0.0552 0">
+        <joint name="j_r_pitch" type="hinge" pos="0.0000 0.0312 0" axis="0 1 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <joint name="j_r_roll" type="hinge" pos="0.0000 0.0312 0" axis="1 0 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <geom name="cake_r_top" type="mesh" mesh="mesh_cake_3x3_r_top" material="mat_cake_top" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+        <geom name="cake_r_bot" type="mesh" mesh="mesh_cake_3x3_r_bot" material="mat_cake_bottom" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      </body>
+      <!-- 바둑판 셀 (fl): pos=(0.0421, 0.0421) -->
+      <body name="cake_fl" pos="0.0421 0.0421 0">
+        <joint name="j_fl_pitch" type="hinge" pos="-0.0181 -0.0181 0" axis="0 1 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <joint name="j_fl_roll" type="hinge" pos="-0.0181 -0.0181 0" axis="1 0 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <geom name="cake_fl_top" type="mesh" mesh="mesh_cake_3x3_fl_top" material="mat_cake_top" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+        <geom name="cake_fl_bot" type="mesh" mesh="mesh_cake_3x3_fl_bot" material="mat_cake_bottom" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      </body>
+      <!-- 바둑판 셀 (fr): pos=(0.0421, -0.0421) -->
+      <body name="cake_fr" pos="0.0421 -0.0421 0">
+        <joint name="j_fr_pitch" type="hinge" pos="-0.0181 0.0181 0" axis="0 1 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <joint name="j_fr_roll" type="hinge" pos="-0.0181 0.0181 0" axis="1 0 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <geom name="cake_fr_top" type="mesh" mesh="mesh_cake_3x3_fr_top" material="mat_cake_top" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+        <geom name="cake_fr_bot" type="mesh" mesh="mesh_cake_3x3_fr_bot" material="mat_cake_bottom" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      </body>
+      <!-- 바둑판 셀 (bl): pos=(-0.0421, 0.0421) -->
+      <body name="cake_bl" pos="-0.0421 0.0421 0">
+        <joint name="j_bl_pitch" type="hinge" pos="0.0181 -0.0181 0" axis="0 1 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <joint name="j_bl_roll" type="hinge" pos="0.0181 -0.0181 0" axis="1 0 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <geom name="cake_bl_top" type="mesh" mesh="mesh_cake_3x3_bl_top" material="mat_cake_top" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+        <geom name="cake_bl_bot" type="mesh" mesh="mesh_cake_3x3_bl_bot" material="mat_cake_bottom" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      </body>
+      <!-- 바둑판 셀 (br): pos=(-0.0421, -0.0421) -->
+      <body name="cake_br" pos="-0.0421 -0.0421 0">
+        <joint name="j_br_pitch" type="hinge" pos="0.0181 0.0181 0" axis="0 1 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <joint name="j_br_roll" type="hinge" pos="0.0181 0.0181 0" axis="1 0 0" stiffness="0.0003" damping="0.00004" armature="0.000001" range="-50 50"/>
+        <geom name="cake_br_top" type="mesh" mesh="mesh_cake_3x3_br_top" material="mat_cake_top" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+        <geom name="cake_br_bot" type="mesh" mesh="mesh_cake_3x3_br_bot" material="mat_cake_bottom" mass="0.0025" contype="1" conaffinity="3" condim="3" friction="0.2 0.005 0.001" solref="0.004 1"/>
+      </body>
     </body>
   </worldbody>
 

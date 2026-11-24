@@ -28,10 +28,11 @@ pancake/env_3d/models/
 *.tfevents.*
 *.tmp
 
-# 임시 생성 미디어 파일
-pancake/proto/*.gif
+# 임시 생성 미디어 파일 (GIF, PNG 등)
+*.gif
 *.png
-!pancake/proto/models/**/*.png
+!pancake/**/models/**/*.png
+!pancake/**/models/**/*.jpg
 
 # 대용량 리플레이 버퍼 (용량이 수백MB~수GB이므로 제외)
 replay_buffer.pkl

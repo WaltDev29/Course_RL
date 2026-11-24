@@ -105,7 +105,9 @@ class PancakeFlipEnv3D(gym.Env):
         self._site_cake_top = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "cake_top_site")
 
         # 충돌 판정용 지오메트리 세트 (팬 바닥 + 2단 외향 경사 림 40개 충돌체 + 룸 바닥)
-        self._cake_geoms = {mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, n) for n in ("cake_top", "cake_bottom")}
+        # [소프트바디 지원] cake_ 코어 및 8방향 탄성 플랩의 모든 geom을 자동 수집
+        self._cake_geoms = {i for i in range(m.ngeom)
+                            if (mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, i) or "").startswith("cake_")}
         pan_geom_names = ["pan_floor"] + [f"rim_l{i:02d}" for i in range(1, 21)] + [f"rim_h{i:02d}" for i in range(1, 21)]
         self._pan_geoms = {mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, n) for n in pan_geom_names
                            if mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, n) >= 0}
@@ -183,9 +185,12 @@ class PancakeFlipEnv3D(gym.Env):
         # 5) 프라이팬 3D 각속도 (3D)
         pan_ang_vel_f32 = pan_ang_vel.astype(np.float32)
 
-        # 6) 프라이팬 중심 기준 케이크 3D 상대 위치 및 상대 선속도 (3D + 3D)
-        rel_cake_pos = (cake_pos - pan_pos).astype(np.float32)
-        rel_cake_vel = (cake_lin_vel - pan_lin_vel).astype(np.float32)
+        # 6) 프라이팬 중심 기준 케이크 3D 상대 위치 및 상대 선속도 (프라이팬 로컬 프레임 투영, 3D + 3D)
+        # pan_mat.T를 곱해 프라이팬 바닥면 기준 [앞/뒤(Local X), 좌/우(Local Y), 팬 바닥 수직고도(Local Z)]로 변환
+        rel_cake_pos_world = cake_pos - pan_pos
+        rel_cake_vel_world = cake_lin_vel - pan_lin_vel
+        rel_cake_pos = (pan_mat.T @ rel_cake_pos_world).astype(np.float32)
+        rel_cake_vel = (pan_mat.T @ rel_cake_vel_world).astype(np.float32)
 
         # 7) 케이크 윗면(Red)의 3D 상향 법선 단위 벡터 (3D)
         diff = cake_top - cake_pos

@@ -49,7 +49,7 @@ SPEED_NAMES = ["1.0x (실제속도)", "2.0x", "3.0x", "5.0x", "MAX (최대가속
 class Dashboard3D(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("완전 3D 팬케이크 뒤집기 RL 관제 대시보드 (8-DOF)")
+        self.title("완전 3D 팬케이크 뒤집기 RL 관제 대시보드 (소프트바디 Deformable 8-DOF)")
         self.geometry("1440x940")
         self.proc = None
         self.session_dir = ""

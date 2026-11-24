@@ -79,7 +79,12 @@ def draw_curves(fig: Figure, ep: Dict[str, np.ndarray], ls: Dict[str, np.ndarray
     ax1.set_title("성공률 및 플립율", fontsize=10, pad=6)
 
     ax2.set_ylabel("reward")
-    ax2.margins(y=0.20)
+    if n and len(ep.get("reward", [])):
+        r_max = float(np.nanmax(ep["reward"]))
+        top_y = r_max + max(20.0, abs(r_max) * 0.15) if r_max > 0 else 50.0
+        ax2.set_ylim(bottom=-500, top=top_y)
+    else:
+        ax2.margins(y=0.20)
     ax2.set_title("에피소드 총 보상", fontsize=10, pad=6)
 
     ax3.set_ylabel("steps (0.02s)")
