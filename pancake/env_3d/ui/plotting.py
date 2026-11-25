@@ -76,7 +76,7 @@ def draw_curves(fig: Figure, ep: Dict[str, np.ndarray], ls: Dict[str, np.ndarray
     
     ax1.set_ylabel("%")
     ax1.set_ylim(-5, 105)
-    ax1.set_title("성공률 및 플립율", fontsize=10, pad=6)
+    ax1.set_title("성공률 및 플립율", fontsize=10, pad=5)
 
     ax2.set_ylabel("reward")
     if n and len(ep.get("reward", [])):
@@ -85,11 +85,11 @@ def draw_curves(fig: Figure, ep: Dict[str, np.ndarray], ls: Dict[str, np.ndarray
         ax2.set_ylim(bottom=-500, top=top_y)
     else:
         ax2.margins(y=0.20)
-    ax2.set_title("에피소드 총 보상", fontsize=10, pad=6)
+    ax2.set_title("에피소드 총 보상", fontsize=10, pad=5)
 
     ax3.set_ylabel("steps (0.02s)")
     ax3.set_ylim(-10, 430)
-    ax3.set_title("에피소드 지속 스텝 수 (생존/완료 시간)", fontsize=10, pad=6)
+    ax3.set_title("에피소드 지속 스텝 수 (생존/완료 시간)", fontsize=10, pad=5)
 
     # 4. Loss
     if len(ls.get("steps", [])):
@@ -103,13 +103,13 @@ def draw_curves(fig: Figure, ep: Dict[str, np.ndarray], ls: Dict[str, np.ndarray
         h = ax4.get_legend_handles_labels()[0] + ax4b.get_legend_handles_labels()[0]
         ax4.legend(h, [l.get_label() for l in h], loc="upper left", fontsize=8)
     ax4.set_ylabel("critic loss (log)")
-    ax4.set_xlabel("total steps")
-    ax4.set_title("신경망 Loss", fontsize=10, pad=6)
+    ax4.set_xlabel("total steps", fontsize=9, labelpad=2)
+    ax4.set_title("신경망 Loss", fontsize=10, pad=5)
 
     for ax in (ax1, ax2, ax3):
         if ax.get_legend_handles_labels()[0]:
             ax.legend(loc="upper left", fontsize=8)
-        ax.set_xlabel("episode")
+        ax.set_xlabel("episode", fontsize=9, labelpad=2)
         ax.grid(alpha=0.3)
     ax4.grid(alpha=0.3)
-    fig.subplots_adjust(top=0.96, bottom=0.05, left=0.12, right=0.88, hspace=0.45)
+    fig.subplots_adjust(top=0.96, bottom=0.06, left=0.13, right=0.88, hspace=0.72)

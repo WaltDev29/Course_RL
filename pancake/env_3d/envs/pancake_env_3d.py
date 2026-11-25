@@ -75,12 +75,14 @@ class PancakeFlipEnv3D(gym.Env):
     ACTION_SCALE = np.array([0.08, 0.12, 0.08, 0.14, 0.08, 0.12, 0.18, 0.08], dtype=np.float64)
 
     def __init__(self, render_mode: Optional[str] = None, max_steps: int = 400,
-                 reward_cfg: Optional[RewardConfig3D] = None, frame_skip: int = 10):
+                 reward_cfg: Optional[RewardConfig3D] = None, frame_skip: int = 10,
+                 enable_vision_noise: bool = False):
         super().__init__()
         self.render_mode = render_mode
         self.max_steps = max_steps
         self.cfg = reward_cfg or RewardConfig3D()
         self.frame_skip = frame_skip
+        self.enable_vision_noise = enable_vision_noise
 
         self.model = mujoco.MjModel.from_xml_path(XML_PATH)
         self.data = mujoco.MjData(self.model)
@@ -103,6 +105,10 @@ class PancakeFlipEnv3D(gym.Env):
         self._site_pan = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "pan_center")
         self._site_cake_center = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "cake_center")
         self._site_cake_top = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "cake_top_site")
+
+        # [Sim-to-Real] 머리 카메라 (Head RGB-D Camera) 바인딩
+        self._cam_head_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_CAMERA, "head_camera")
+        self._site_head_cam = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "head_cam_site")
 
         # 충돌 판정용 지오메트리 세트 (팬 바닥 + 2단 외향 경사 림 40개 충돌체 + 룸 바닥)
         # [소프트바디 지원] cake_ 코어 및 8방향 탄성 플랩의 모든 geom을 자동 수집
@@ -165,6 +171,7 @@ class PancakeFlipEnv3D(gym.Env):
 
         # 2) 위치 및 속도 추출
         wrist_pos = d.site_xpos[self._site_wrist]
+        # [FK 기반 프라이팬 상태]: 프라이팬 중앙 센서 없이 손목 기구학 체인 및 IMU로 산출
         pan_pos = d.site_xpos[self._site_pan]
         cake_pos = d.site_xpos[self._site_cake_center]
         cake_top = d.site_xpos[self._site_cake_top]
@@ -178,24 +185,45 @@ class PancakeFlipEnv3D(gym.Env):
         rel_pan_vel = (pan_lin_vel - wrist_lin_vel).astype(np.float32)
 
         # 4) 프라이팬 바닥의 3D 상향 법선 단위 벡터 (3D)
-        # site_xmat는 3x3 회전행렬, 2열(0,1,2 중 z축)은 로컬 Z축 = 수직 윗방향
+        # 손목 IMU 회전행렬 및 기구학 오프셋을 통한 팬 상단 법선 산출 (팬 중앙 센서 불필요)
         pan_mat = d.site_xmat[self._site_pan].reshape(3, 3)
         pan_up_vec = pan_mat[:, 2].astype(np.float32)
 
         # 5) 프라이팬 3D 각속도 (3D)
         pan_ang_vel_f32 = pan_ang_vel.astype(np.float32)
 
-        # 6) 프라이팬 중심 기준 케이크 3D 상대 위치 및 상대 선속도 (프라이팬 로컬 프레임 투영, 3D + 3D)
-        # pan_mat.T를 곱해 프라이팬 바닥면 기준 [앞/뒤(Local X), 좌/우(Local Y), 팬 바닥 수직고도(Local Z)]로 변환
-        rel_cake_pos_world = cake_pos - pan_pos
-        rel_cake_vel_world = cake_lin_vel - pan_lin_vel
-        rel_cake_pos = (pan_mat.T @ rel_cake_pos_world).astype(np.float32)
-        rel_cake_vel = (pan_mat.T @ rel_cake_vel_world).astype(np.float32)
+        # 6) [Sim-to-Real] 머리 카메라(Head Camera) 기반 팬케이크 상대 위치/속도 계측 (3D + 3D)
+        # 시뮬레이터 월드 절대좌표 직접 치팅을 배제하고, 에이전트 머리 카메라 시선 좌표계를 투영
+        cam_pos = d.cam_xpos[self._cam_head_id]
+        cam_mat = d.cam_xmat[self._cam_head_id].reshape(3, 3)
 
-        # 7) 케이크 윗면(Red)의 3D 상향 법선 단위 벡터 (3D)
-        diff = cake_top - cake_pos
-        norm = np.linalg.norm(diff)
-        cake_up_vec = (diff / (norm + 1e-8)).astype(np.float32)
+        # 머리 카메라 시각 좌표계 상의 3D 위치 추정
+        cake_pos_cam = cam_mat.T @ (cake_pos - cam_pos)
+        pan_pos_cam = cam_mat.T @ (pan_pos - cam_pos)
+
+        # Sim-to-Real 비전 노이즈 주입 (Depth 센서 및 캘리브레이션 오차 모사)
+        if self.enable_vision_noise:
+            noise = self.np_random.normal(0.0, [0.002, 0.002, 0.005], size=3)
+            cake_pos_cam = cake_pos_cam + noise
+
+        # 카메라 시각에서 계측된 팬 중심 기준 케이크 상대 위치 벡터
+        d_rel_cam = cake_pos_cam - pan_pos_cam
+        # 카메라 측정 벡터를 프라이팬 로컬 제어 프레임(R_pan^T)으로 정렬 투영
+        rel_cake_pos = (pan_mat.T @ (cam_mat @ d_rel_cam)).astype(np.float32)
+
+        # 머리 카메라 트래킹 기반 상대 선속도 계산
+        cake_vel_cam = cam_mat.T @ cake_lin_vel
+        pan_vel_cam = cam_mat.T @ pan_lin_vel
+        if self.enable_vision_noise:
+            cake_vel_cam = cake_vel_cam + self.np_random.normal(0.0, 0.008, size=3)
+        v_rel_cam = cake_vel_cam - pan_vel_cam
+        rel_cake_vel = (pan_mat.T @ (cam_mat @ v_rel_cam)).astype(np.float32)
+
+        # 7) 케이크 윗면(Red)의 3D 상향 법선 단위 벡터 (3D, 비전 포즈 추정)
+        diff_cam = cam_mat.T @ (cake_top - cake_pos)
+        diff_world = cam_mat @ diff_cam
+        norm = np.linalg.norm(diff_world)
+        cake_up_vec = (diff_world / (norm + 1e-8)).astype(np.float32)
 
         # 8) 케이크 3D 각속도 (3D)
         cake_ang_vel_f32 = cake_ang_vel.astype(np.float32)
@@ -413,13 +441,12 @@ class PancakeFlipEnv3D(gym.Env):
         return r, terminated, info
 
     # ---------- 렌더링 ----------
-    def render(self):
+    def render(self, camera: str = "quarter_view"):
         if self.render_mode != "rgb_array":
             return None
         if self._renderer is None:
             self._renderer = mujoco.Renderer(self.model, height=480, width=640)
-        # 3인칭 쿼터뷰 카메라로 렌더링
-        self._renderer.update_scene(self.data, camera="quarter_view")
+        self._renderer.update_scene(self.data, camera=camera)
         return self._renderer.render()
 
     def close(self):

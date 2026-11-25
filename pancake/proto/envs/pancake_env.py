@@ -72,12 +72,14 @@ class PancakeFlipEnv(gym.Env):
     ACTION_SCALE = np.array([0.04, 0.04, 0.3])  # step당 최대 이동량 (m, m, rad)
 
     def __init__(self, render_mode: Optional[str] = None, max_steps: int = 400,
-                 reward_cfg: Optional[RewardConfig] = None, frame_skip: int = 10):
+                 reward_cfg: Optional[RewardConfig] = None, frame_skip: int = 10,
+                 enable_vision_noise: bool = False):
         super().__init__()
         self.render_mode = render_mode
         self.max_steps = max_steps
         self.cfg = reward_cfg or RewardConfig()
         self.frame_skip = frame_skip
+        self.enable_vision_noise = enable_vision_noise
 
         self.model = mujoco.MjModel.from_xml_path(XML_PATH)
         self.data = mujoco.MjData(self.model)
@@ -91,6 +93,10 @@ class PancakeFlipEnv(gym.Env):
         self._site_cake_center = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "site_cake_center")
         self._site_cake_left = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "site_cake_left")
         self._site_cake_right = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "site_cake_right")
+
+        # [Sim-to-Real] 머리 카메라 (Head RGB-D Camera) 바인딩
+        self._cam_head_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_CAMERA, "head_camera")
+        self._site_head_cam = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "head_cam_site")
 
         self._cake_geoms = {i for i in range(m.ngeom)
                             if "cake_geom" in (mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, i) or "")}
@@ -143,13 +149,41 @@ class PancakeFlipEnv(gym.Env):
 
     def _get_state_dict(self) -> Dict[str, float]:
         d, q, v = self.data, self._jq, self._jv
+        # [FK 기반 프라이팬 상태]: 팬 중앙 센서 없이 손목 기구학 및 엔코더로 산출
         wrist = d.site_xpos[self._site_wrist]
         pan = d.site_xpos[self._site_pan]
         wv, pv = self._site_vel(self._site_wrist), self._site_vel(self._site_pan)
         q_sum = kin.wrap_angle(d.qpos[q["shoulder"]] + d.qpos[q["elbow"]] + d.qpos[q["wrist"]])
         w_sum = d.qvel[v["shoulder"]] + d.qvel[v["elbow"]] + d.qvel[v["wrist"]]
-        cake_pos = np.array([d.qpos[q["cake_x"]], d.qpos[q["cake_z"]]])
-        cake_vel = np.array([d.qvel[v["cake_x"]], d.qvel[v["cake_z"]]])
+
+        # [Sim-to-Real] 머리 카메라 (Head Camera) 시선 좌표계 투영
+        cam_pos = d.cam_xpos[self._cam_head_id]
+        cam_mat = d.cam_xmat[self._cam_head_id].reshape(3, 3)
+
+        cake_3d = np.array([d.qpos[q["cake_x"]], 0.0, d.qpos[q["cake_z"]]])
+        p_cake_cam = cam_mat.T @ (cake_3d - cam_pos)
+        p_pan_cam = cam_mat.T @ (pan - cam_pos)
+
+        # 실제 상용 3D 카메라 센서 오차 모사 (Depth 노이즈)
+        if self.enable_vision_noise:
+            p_cake_cam = p_cake_cam + self.np_random.normal(0.0, [0.002, 0.002, 0.004], size=3)
+
+        d_rel_cam = p_cake_cam - p_pan_cam
+        d_rel_world = cam_mat @ d_rel_cam
+        rel_x_cake = float(d_rel_world[0])
+        rel_z_cake = float(d_rel_world[2])
+
+        # 머리 카메라 트래킹 기반 상대 선속도 계산
+        cake_vel_3d = np.array([d.qvel[v["cake_x"]], 0.0, d.qvel[v["cake_z"]]])
+        v_cake_cam = cam_mat.T @ cake_vel_3d
+        v_pan_cam = cam_mat.T @ pv
+        if self.enable_vision_noise:
+            v_cake_cam = v_cake_cam + self.np_random.normal(0.0, 0.008, size=3)
+        v_rel_cam = v_cake_cam - v_pan_cam
+        v_rel_world = cam_mat @ v_rel_cam
+        rel_vx_cake = float(v_rel_world[0])
+        rel_vz_cake = float(v_rel_world[2])
+
         phi = d.qpos[q["cake_rot"]]
         omega_cake = d.qvel[v["cake_rot"]]
 
@@ -170,8 +204,8 @@ class PancakeFlipEnv(gym.Env):
             rel_x_pan=pan[0] - wrist[0], rel_z_pan=pan[2] - wrist[2],
             rel_vx_pan=pv[0] - wv[0], rel_vz_pan=pv[2] - wv[2],
             theta_pan=q_sum, omega_pan=w_sum,
-            rel_x_cake=cake_pos[0] - pan[0], rel_z_cake=cake_pos[1] - pan[2],
-            rel_vx_cake=cake_vel[0] - pv[0], rel_vz_cake=cake_vel[1] - pv[2],
+            rel_x_cake=rel_x_cake, rel_z_cake=rel_z_cake,
+            rel_vx_cake=rel_vx_cake, rel_vz_cake=rel_vz_cake,
             norm_x=norm_x,
             norm_z=norm_z,
             deform_curl=curl,

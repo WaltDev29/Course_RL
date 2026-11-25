@@ -27,6 +27,10 @@
     <geom name="eye_pupil" type="sphere" pos="0.070 -0.01 1.07" size="0.011" rgba="0.1 0.15 0.2 1"/>
     <geom name="eye_lens" type="sphere" pos="0.077 -0.01 1.072" size="0.004" rgba="0.9 0.95 1.0 1"/>
 
+    <!-- [머리 카메라 (Head RGB-D Camera)] 작업 영역을 사선 하향 지향 (FOV 70도) -->
+    <camera name="head_camera" pos="0.075 0 1.07" xyaxes="0 -1 0  0.4067 0 0.9135" fovy="70"/>
+    <site name="head_cam_site" pos="0.075 0 1.07" size="0.015" rgba="0.2 0.8 1.0 0.8"/>
+
     <!-- 어깨 (Shoulder): 네모 상자 수평 가운데(-0.01)에서 사람 체형에 맞게 살짝 앞인 (0.01, 0, 0.90)에 정렬 -->
     <body name="link1" pos="0.01 0 0.90">
       <joint name="shoulder" type="hinge" axis="0 -1 0" range="-2.2 0.5"/>

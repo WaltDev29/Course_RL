@@ -68,6 +68,10 @@
       <geom name="eye_pupil" type="sphere" size="0.011" pos="0.093 0 1.07" rgba="0.1 0.15 0.2 1"/>
       <geom name="eye_lens" type="sphere" size="0.004" pos="0.098 0 1.072" rgba="0.9 0.95 1.0 1"/>
 
+      <!-- [머리 카메라 (Head RGB-D Camera)] 작업 영역(프라이팬/케이크)을 사선 하향 지향 (FOV 70도) -->
+      <camera name="head_camera" pos="0.09 0 1.06" xyaxes="0.2815 -0.9596 0.0000  0.3732 0.1095 0.9213" fovy="70"/>
+      <site name="head_cam_site" pos="0.09 0 1.06" size="0.015" rgba="0.2 0.8 1.0 0.8"/>
+
       <!-- [팔 체인]
            - 어깨 윗면(Z + 0.042)이 몸체 윗면(Z=0.90)과 정확히 일치: Z = 0.858m
            - 몸체 바깥쪽(Y = +0.18 + 0.04 = +0.22m)에 배치하여 몸체 관통 방지 -->
